@@ -35,6 +35,33 @@ Get a free Jamendo client id at https://devportal.jamendo.com (sign up → creat
 application → copy the client id). Without it, `/api/generate` returns a 503 telling
 you the key is missing.
 
+Other settings in `backend/.env`:
+
+- `DATABASE_URL` — SQLAlchemy URL for user accounts and saved mixes. Defaults to
+  `sqlite:///./promptmix.db` (relative to where uvicorn is started); the file and
+  tables are created automatically on first run.
+- `JWT_SECRET` — secret used to sign login tokens. The built-in default is for local
+  development only; set a long random value anywhere else.
+
+## Accounts & saved mixes
+
+`/api/generate` is open to guests. Logging in lets you save generated mixes and replay
+them later (track audio is served from `backend/cache/`, so a saved mix replays as long
+as its tracks are still cached).
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/auth/signup` | — | `{email, password}` → `{access_token, token_type}` |
+| POST | `/api/auth/login` | — | `{email, password}` → `{access_token, token_type}` |
+| GET | `/api/me` | Bearer | Current user |
+| POST | `/api/mixes` | Bearer | `{mix: <PlaylistOut>}` → saved mix |
+| GET | `/api/mixes` | Bearer | List your saved mixes (newest first) |
+| GET | `/api/mixes/{id}` | Bearer | Fetch one of your mixes |
+| DELETE | `/api/mixes/{id}` | Bearer | Delete one of your mixes |
+
+Authenticated requests send `Authorization: Bearer <access_token>`; the frontend
+keeps the token in `localStorage`.
+
 ## How the mix works
 
 - `backend/app/prompts.py` — prompt → Jamendo tags + speed/mood filters

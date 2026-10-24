@@ -2,6 +2,7 @@ node_modules/
 dist/
 backend/.venv/
 backend/cache/
+promptmix.db
 backend/.env
 __pycache__/
 *.pyc
