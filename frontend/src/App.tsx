@@ -14,11 +14,13 @@ import {
   type User,
 } from './api'
 import { DjEngine, type EngineSnapshot } from './audio/djEngine'
+import { AboutUs } from './components/AboutUs'
 import { AuthForm } from './components/AuthForm'
 import { MyMixes } from './components/MyMixes'
 import { PlayerBar } from './components/PlayerBar'
 import { PromptInput } from './components/PromptInput'
 import { TrackRow } from './components/TrackRow'
+import { usePath } from './usePath'
 import './App.css'
 
 const IDLE_SNAP: EngineSnapshot = {
@@ -41,7 +43,9 @@ export default function App() {
   const [mixesLoading, setMixesLoading] = useState(() => getToken() !== null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [authMode, setAuthMode] = useState<'login' | 'signup' | null>(null)
+  const [path, navigate] = usePath()
   const engineRef = useRef<DjEngine | null>(null)
+  const onAbout = path === '/aboutus'
 
   const engine = () => (engineRef.current ??= new DjEngine())
 
@@ -149,10 +153,32 @@ export default function App() {
 
   const busy = generating || snap.status === 'loading'
 
+  function openAuth(mode: 'login' | 'signup') {
+    navigate('/')
+    setAuthMode(mode)
+  }
+
+  function link(to: string, label: string) {
+    return (
+      <a
+        href={to}
+        className="nav-link"
+        onClick={(e) => { e.preventDefault(); navigate(to) }}
+      >
+        {label}
+      </a>
+    )
+  }
+
   return (
     <div className="page">
       <nav className="nav">
-        <div className="logo"><span className="logo-mark">✳</span>PromptMix</div>
+        <div className="nav-left">
+          <a href="/" className="logo" onClick={(e) => { e.preventDefault(); navigate('/') }}>
+            <span className="logo-mark">✳</span>PromptMix
+          </a>
+          {onAbout ? link('/', 'Home') : link('/aboutus', 'About us')}
+        </div>
         <div className="nav-actions">
           {user ? (
             <>
@@ -161,103 +187,107 @@ export default function App() {
             </>
           ) : (
             <>
-              <button className="btn btn-text" onClick={() => setAuthMode('login')}>Log in</button>
-              <button className="btn btn-yellow" onClick={() => setAuthMode('signup')}>Sign up for free</button>
+              <button className="btn btn-text" onClick={() => openAuth('login')}>Log in</button>
+              <button className="btn btn-yellow" onClick={() => openAuth('signup')}>Sign up for free</button>
             </>
           )}
         </div>
       </nav>
 
-      <main className="card">
-        <section className="hero">
-          <h1>Prompt a vibe.<br />Get a beat-matched DJ set.</h1>
-          <p className="subtitle">
-            Describe any mood and PromptMix pulls Creative Commons tracks, matches their tempo
-            and key, and blends them like a DJ — right in your browser.
-          </p>
+      {onAbout ? (
+        <main className="card"><AboutUs /></main>
+      ) : (
+        <main className="card">
+          <section className="hero">
+            <h1>Prompt a vibe.<br />Get a beat-matched DJ set.</h1>
+            <p className="subtitle">
+              Describe any mood and PromptMix pulls Creative Commons tracks, matches their tempo
+              and key, and blends them like a DJ — right in your browser.
+            </p>
 
-          {authMode && !user && (
-            <AuthForm
-              key={authMode}
-              initialMode={authMode}
-              onAuthenticated={onAuthenticated}
-              onCancel={() => setAuthMode(null)}
-            />
+            {authMode && !user && (
+              <AuthForm
+                key={authMode}
+                initialMode={authMode}
+                onAuthenticated={onAuthenticated}
+                onCancel={() => setAuthMode(null)}
+              />
+            )}
+
+            <PromptInput onGenerate={onGenerate} loading={busy} />
+            <div className="pill-note">✓ No account needed to generate</div>
+          </section>
+
+          {error && <div className="error">{error}</div>}
+          {generating && (
+            <div className="generating">
+              <div className="spinner" />
+              Finding tracks, analyzing BPM &amp; energy, planning transitions…
+            </div>
           )}
 
-          <PromptInput onGenerate={onGenerate} loading={busy} />
-          <div className="pill-note">✓ No account needed to generate</div>
-        </section>
-
-        {error && <div className="error">{error}</div>}
-        {generating && (
-          <div className="generating">
-            <div className="spinner" />
-            Finding tracks, analyzing BPM &amp; energy, planning transitions…
-          </div>
-        )}
-
-        {mix && (
-          <section className="mix">
-            <div className="mix-banner">
-              <div>
-                <div className="eyebrow">Now mixing</div>
-                <div className="mix-prompt">“{mix.prompt}”</div>
-                <div className="mix-tags">
-                  {mix.resolved_tags.map((t) => (
-                    <span key={t} className="tag">{t}</span>
-                  ))}
+          {mix && (
+            <section className="mix">
+              <div className="mix-banner">
+                <div>
+                  <div className="eyebrow">Now mixing</div>
+                  <div className="mix-prompt">“{mix.prompt}”</div>
+                  <div className="mix-tags">
+                    {mix.resolved_tags.map((t) => (
+                      <span key={t} className="tag">{t}</span>
+                    ))}
+                  </div>
                 </div>
+                {user ? (
+                  <button
+                    className="btn btn-dark"
+                    onClick={onSaveMix}
+                    disabled={saveState !== 'idle'}
+                  >
+                    {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved ✓' : 'Save mix'}
+                  </button>
+                ) : (
+                  <button className="btn btn-outline" onClick={() => setAuthMode('login')}>
+                    Log in to save
+                  </button>
+                )}
               </div>
-              {user ? (
-                <button
-                  className="btn btn-dark"
-                  onClick={onSaveMix}
-                  disabled={saveState !== 'idle'}
-                >
-                  {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved ✓' : 'Save mix'}
-                </button>
-              ) : (
-                <button className="btn btn-outline" onClick={() => setAuthMode('login')}>
-                  Log in to save
-                </button>
-              )}
-            </div>
-            <div className="track-list">
-              {mix.tracks.map((t, i) => (
-                <TrackRow
-                  key={t.id}
-                  track={t}
-                  index={i}
-                  active={snap.currentTrack === i && snap.status === 'playing'}
-                  ratePct={Math.round((t.rate - 1) * 100)}
-                />
-              ))}
-            </div>
-            <PlayerBar
-              mix={mix}
-              snap={snap}
-              loadProgress={loadProgress}
-              onPlay={() => { engine().play(); setSnap(engine().snapshot()) }}
-              onPause={() => { engine().pause(); setSnap(engine().snapshot()) }}
-              onStop={() => { engine().stop(); setSnap(engine().snapshot()) }}
-              onSeek={(s) => { engine().seekSet(s); setSnap(engine().snapshot()) }}
-              onNext={() => { engine().skipNext(); setSnap(engine().snapshot()) }}
-              onPrev={() => { engine().skipPrev(); setSnap(engine().snapshot()) }}
-            />
-          </section>
-        )}
+              <div className="track-list">
+                {mix.tracks.map((t, i) => (
+                  <TrackRow
+                    key={t.id}
+                    track={t}
+                    index={i}
+                    active={snap.currentTrack === i && snap.status === 'playing'}
+                    ratePct={Math.round((t.rate - 1) * 100)}
+                  />
+                ))}
+              </div>
+              <PlayerBar
+                mix={mix}
+                snap={snap}
+                loadProgress={loadProgress}
+                onPlay={() => { engine().play(); setSnap(engine().snapshot()) }}
+                onPause={() => { engine().pause(); setSnap(engine().snapshot()) }}
+                onStop={() => { engine().stop(); setSnap(engine().snapshot()) }}
+                onSeek={(s) => { engine().seekSet(s); setSnap(engine().snapshot()) }}
+                onNext={() => { engine().skipNext(); setSnap(engine().snapshot()) }}
+                onPrev={() => { engine().skipPrev(); setSnap(engine().snapshot()) }}
+              />
+            </section>
+          )}
 
-        {user && (
-          <MyMixes
-            mixes={savedMixes}
-            loading={mixesLoading}
-            disabled={busy}
-            onOpen={onOpenMix}
-            onDelete={onDeleteMix}
-          />
-        )}
-      </main>
+          {user && (
+            <MyMixes
+              mixes={savedMixes}
+              loading={mixesLoading}
+              disabled={busy}
+              onOpen={onOpenMix}
+              onDelete={onDeleteMix}
+            />
+          )}
+        </main>
+      )}
     </div>
   )
 }
