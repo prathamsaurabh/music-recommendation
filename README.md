@@ -1,49 +1,32 @@
 # PromptMix
 
-Prompt a vibe, get a beat-matched, crossfaded DJ set — no DJ required.
-
-Type any description ("high energy workout techno", "chill lofi for a rainy
-day") and PromptMix:
-
-1. resolves your prompt to genre/mood tags,
-2. pulls full-length Creative Commons tracks from **Jamendo**,
-3. analyzes each track with **librosa** — BPM & beat grid (onset
-   autocorrelation), FFT-based energy curve (intro/outro detection), and
-   Krumhansl-Schmuckler key estimation,
-4. sequences the set for smooth BPM drift + harmonically compatible keys
-   (Camelot wheel), then computes a tempo curve and bar-aligned mix points,
-5. plays it back in the browser with a two-deck Web Audio engine that
-   tempo-matches each track and applies equal-power crossfades — like a DJ
-   blend.
+Prompt a vibe, get a beat-matched, crossfaded DJ set from Creative Commons tracks (Jamendo).
 
 ## Setup
 
 ```bash
-# 1. Backend
+# Backend
 cd backend
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-cp .env.example .env        # then put your Jamendo client id in .env
+cp .env.example .env
 .venv/bin/python -m uvicorn app.main:app --port 8000
 
-# 2. Frontend (new terminal)
+# Frontend
 cd frontend
-npm install
-npm run dev                 # http://localhost:5173 (proxies /api -> :8000)
+npm install && npm run dev   # http://localhost:5173
 ```
 
-Get a free Jamendo client id at https://devportal.jamendo.com (sign up → create an
-application → copy the client id). Without it, `/api/generate` returns a 503 telling
-you the key is missing.
+`backend/.env`:
 
-## How the mix works
+- `JAMENDO_CLIENT_ID` — free at https://devportal.jamendo.com (required for `/api/generate`)
+- `DATABASE_URL` — defaults to `sqlite:///./promptmix.db` (created on first run)
+- `JWT_SECRET` — signs login tokens; set a random value outside local dev
 
-- `backend/app/prompts.py` — prompt → Jamendo tags + speed/mood filters
-- `backend/app/analyzer.py` — BPM, beat grid, energy curve, key, mix_in/mix_out
-- `backend/app/sequencer.py` — greedy ordering by BPM drift + Camelot distance
-- `backend/app/mixplan.py` — per-track playbackRate + per-transition
-  exit/enter/fade times
-- `frontend/src/audio/djEngine.ts` — schedules the whole set on the
-  AudioContext clock with tempo matching and equal-power crossfades
+## API
 
-Track audio and analyses are cached in `backend/cache/` so re-generating the
-same prompt is fast.
+- `POST /api/generate` — build a mix from a prompt (no auth)
+- `POST /api/auth/signup`, `POST /api/auth/login` — `{email, password}` → `{access_token}`
+- `GET /api/me` — current user
+- `GET|POST /api/mixes`, `GET|DELETE /api/mixes/{id}` — saved mixes
+
+Authenticated routes need `Authorization: Bearer <access_token>`.
