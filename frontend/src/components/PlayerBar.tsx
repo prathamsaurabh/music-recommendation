@@ -8,6 +8,12 @@ function fmt(sec: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+const SkipIcon = ({ flip }: { flip?: boolean }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={flip ? { transform: 'scaleX(-1)' } : undefined}>
+    <path d="M5 5h2.5v14H5zM9 12l10-7v14z" />
+  </svg>
+)
+
 interface Props {
   mix: Playlist
   snap: EngineSnapshot
@@ -39,7 +45,7 @@ export function PlayerBar({ mix, snap, loadProgress, onPlay, onPause, onStop, on
   return (
     <div className="player-bar">
       <div className="player-controls">
-        <button className="skip-btn" onClick={onPrev} disabled={!canNavigate} title="Previous track">⏮</button>
+        <button className="skip-btn" onClick={onPrev} disabled={!canNavigate} title="Previous track"><SkipIcon /></button>
         {playing ? (
           <button className="play-btn" onClick={onPause}>❚❚</button>
         ) : (
@@ -47,7 +53,7 @@ export function PlayerBar({ mix, snap, loadProgress, onPlay, onPause, onStop, on
             {loading ? '…' : '▶'}
           </button>
         )}
-        <button className="skip-btn" onClick={onNext} disabled={!canNavigate} title="Next track">⏭</button>
+        <button className="skip-btn" onClick={onNext} disabled={!canNavigate} title="Next track"><SkipIcon flip /></button>
         <button className="stop-btn" onClick={onStop} disabled={!playing && !paused}>■</button>
       </div>
       <div className="player-meta">

@@ -11,6 +11,7 @@ interface Props {
 export function MyMixes({ mixes, loading, disabled, onOpen, onDelete }: Props) {
   return (
     <section className="my-mixes">
+      <div className="eyebrow">Your library</div>
       <h2>My Mixes</h2>
       {loading && <div className="my-mixes-empty">Loading…</div>}
       {!loading && mixes.length === 0 && (

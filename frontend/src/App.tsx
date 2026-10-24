@@ -40,6 +40,7 @@ export default function App() {
   const [savedMixes, setSavedMixes] = useState<SavedMix[]>([])
   const [mixesLoading, setMixesLoading] = useState(() => getToken() !== null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | null>(null)
   const engineRef = useRef<DjEngine | null>(null)
 
   const engine = () => (engineRef.current ??= new DjEngine())
@@ -82,6 +83,7 @@ export default function App() {
 
   function onAuthenticated() {
     setError('')
+    setAuthMode(null)
     setMixesLoading(true)
     refreshAccount()
   }
@@ -148,83 +150,114 @@ export default function App() {
   const busy = generating || snap.status === 'loading'
 
   return (
-    <div className="app">
-      <header>
-        <div className="header-row">
-          <h1>PromptMix</h1>
-          {user && (
-            <div className="account">
-              <span className="account-email">{user.email}</span>
-              <button className="link-btn" onClick={onLoggedOut}>Log out</button>
-            </div>
+    <div className="page">
+      <nav className="nav">
+        <div className="logo"><span className="logo-mark">✳</span>PromptMix</div>
+        <div className="nav-actions">
+          {user ? (
+            <>
+              <span className="nav-email">{user.email}</span>
+              <button className="btn btn-outline" onClick={onLoggedOut}>Log out</button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-text" onClick={() => setAuthMode('login')}>Log in</button>
+              <button className="btn btn-yellow" onClick={() => setAuthMode('signup')}>Sign up for free</button>
+            </>
           )}
         </div>
-        <p className="tagline">Prompt a vibe. Get a beat-matched DJ set.</p>
-      </header>
+      </nav>
 
-      {!user && <AuthForm onAuthenticated={onAuthenticated} />}
+      <main className="card">
+        <section className="hero">
+          <h1>Prompt a vibe.<br />Get a beat-matched DJ set.</h1>
+          <p className="subtitle">
+            Describe any mood and PromptMix pulls Creative Commons tracks, matches their tempo
+            and key, and blends them like a DJ — right in your browser.
+          </p>
 
-      <PromptInput onGenerate={onGenerate} loading={busy} />
+          {authMode && !user && (
+            <AuthForm
+              key={authMode}
+              initialMode={authMode}
+              onAuthenticated={onAuthenticated}
+              onCancel={() => setAuthMode(null)}
+            />
+          )}
 
-      {error && <div className="error">{error}</div>}
-      {generating && (
-        <div className="generating">
-          <div className="spinner" />
-          Finding tracks, analyzing BPM &amp; energy, planning transitions…
-        </div>
-      )}
+          <PromptInput onGenerate={onGenerate} loading={busy} />
+          <div className="pill-note">✓ No account needed to generate</div>
+        </section>
 
-      {mix && (
-        <>
-          <div className="mix-meta">
-            <span className="mix-prompt">“{mix.prompt}”</span>
-            {mix.resolved_tags.map((t) => (
-              <span key={t} className="chip tag">{t}</span>
-            ))}
-            {user && (
-              <button
-                className="save-btn"
-                onClick={onSaveMix}
-                disabled={saveState !== 'idle'}
-              >
-                {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved ✓' : 'Save mix'}
-              </button>
-            )}
+        {error && <div className="error">{error}</div>}
+        {generating && (
+          <div className="generating">
+            <div className="spinner" />
+            Finding tracks, analyzing BPM &amp; energy, planning transitions…
           </div>
-          <div className="track-list">
-            {mix.tracks.map((t, i) => (
-              <TrackRow
-                key={t.id}
-                track={t}
-                index={i}
-                active={snap.currentTrack === i && snap.status === 'playing'}
-                ratePct={Math.round((t.rate - 1) * 100)}
-              />
-            ))}
-          </div>
-          <PlayerBar
-            mix={mix}
-            snap={snap}
-            loadProgress={loadProgress}
-            onPlay={() => { engine().play(); setSnap(engine().snapshot()) }}
-            onPause={() => { engine().pause(); setSnap(engine().snapshot()) }}
-            onStop={() => { engine().stop(); setSnap(engine().snapshot()) }}
-            onSeek={(s) => { engine().seekSet(s); setSnap(engine().snapshot()) }}
-            onNext={() => { engine().skipNext(); setSnap(engine().snapshot()) }}
-            onPrev={() => { engine().skipPrev(); setSnap(engine().snapshot()) }}
+        )}
+
+        {mix && (
+          <section className="mix">
+            <div className="mix-banner">
+              <div>
+                <div className="eyebrow">Now mixing</div>
+                <div className="mix-prompt">“{mix.prompt}”</div>
+                <div className="mix-tags">
+                  {mix.resolved_tags.map((t) => (
+                    <span key={t} className="tag">{t}</span>
+                  ))}
+                </div>
+              </div>
+              {user ? (
+                <button
+                  className="btn btn-dark"
+                  onClick={onSaveMix}
+                  disabled={saveState !== 'idle'}
+                >
+                  {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved ✓' : 'Save mix'}
+                </button>
+              ) : (
+                <button className="btn btn-outline" onClick={() => setAuthMode('login')}>
+                  Log in to save
+                </button>
+              )}
+            </div>
+            <div className="track-list">
+              {mix.tracks.map((t, i) => (
+                <TrackRow
+                  key={t.id}
+                  track={t}
+                  index={i}
+                  active={snap.currentTrack === i && snap.status === 'playing'}
+                  ratePct={Math.round((t.rate - 1) * 100)}
+                />
+              ))}
+            </div>
+            <PlayerBar
+              mix={mix}
+              snap={snap}
+              loadProgress={loadProgress}
+              onPlay={() => { engine().play(); setSnap(engine().snapshot()) }}
+              onPause={() => { engine().pause(); setSnap(engine().snapshot()) }}
+              onStop={() => { engine().stop(); setSnap(engine().snapshot()) }}
+              onSeek={(s) => { engine().seekSet(s); setSnap(engine().snapshot()) }}
+              onNext={() => { engine().skipNext(); setSnap(engine().snapshot()) }}
+              onPrev={() => { engine().skipPrev(); setSnap(engine().snapshot()) }}
+            />
+          </section>
+        )}
+
+        {user && (
+          <MyMixes
+            mixes={savedMixes}
+            loading={mixesLoading}
+            disabled={busy}
+            onOpen={onOpenMix}
+            onDelete={onDeleteMix}
           />
-        </>
-      )}
-
-      {user && (
-        <MyMixes
-          mixes={savedMixes}
-          loading={mixesLoading}
-          disabled={busy}
-          onOpen={onOpenMix}
-          onDelete={onDeleteMix}
-        />
-      )}
+        )}
+      </main>
     </div>
   )
 }
